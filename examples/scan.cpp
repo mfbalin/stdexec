@@ -20,37 +20,37 @@ sender auto async_inclusive_scan(sender auto init_sender__,
                                  std::span<T> output,
                                  const std::size_t block_size,
                                  const std::size_t tile_count) {
-  any_sender_of<set_value_t(T)> init_sender = init_sender__;
+  any_sender_of<set_value_t(T)> init_sender = std::move(init_sender__);
 
   while (!input.empty()) {
     std::size_t const N = std::min(input.size(), tile_count * block_size);
 
-    sender auto first_phase = just(std::vector<T>{tile_count + 1})
+    sender auto first_phase = just(std::vector<T>(tile_count + 1))
         | bulk(tile_count,
-            [=](std::size_t i, std::vector<T>& partials) {
+            [=](std::size_t i, std::vector<T>& partials) noexcept {
               auto start = i * N / tile_count;
               auto end   = (i + 1) * N / tile_count;
               partials[i + 1] = *--std::inclusive_scan(std::begin(input) + start,
                                                         std::begin(input) + end,
                                                         std::begin(output) + start);
             });
-    sender auto next_init_sender = when_all(init_sender, first_phase)
-            | then([](T init, std::vector<T>&& partials) {
+    sender auto next_init_sender = when_all(std::move(init_sender), first_phase)
+            | then([](T init, std::vector<T>&& partials) noexcept {
               partials[0] = init;
               std::inclusive_scan(std::begin(partials), std::end(partials),
                                   std::begin(partials));
               return std::move(partials);
             }) | bulk(tile_count,
-            [=](std::size_t i, std::vector<T>& partials) {
+            [=](std::size_t i, std::vector<T>& partials) noexcept {
               auto start = i * N / tile_count;
               auto end   = (i + 1) * N / tile_count;
               std::for_each(std::begin(output) + start, std::begin(output) + end,
-                [a=partials[i]] (T& e) { e += a; }
+                [a=partials[i]] (T& e) noexcept { e += a; }
               );
-            }) | then([](std::vector<T>&& partials) {
+            }) | then([](std::vector<T>&& partials) noexcept {
                 return partials.back();
               });
-    init_sender = next_init_sender;
+    init_sender = std::move(next_init_sender);
     input = input.subspan(N);
     output = output.subspan(N);
   }
