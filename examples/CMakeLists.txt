@@ -39,6 +39,7 @@ set(stdexec_examples
                   "example.hello_coro : hello_coro.cpp"
                        "example.scope : scope.cpp"
                        "example.retry : retry.cpp"
+                       "example.scan  : scan.cpp"
                         "example.then : then.cpp"
       "example.server_theme.let_value : server_theme/let_value.cpp"
     "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
