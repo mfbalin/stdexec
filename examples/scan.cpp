@@ -5,7 +5,7 @@
 #include <span>
 #include <numeric>
 #include <vector>
-#include <cassert>
+#include <iostream>
 
 using namespace stdexec;
 using namespace exec;
@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
 
   auto back = this_thread::sync_wait(std::move(scan_back_on));
 
-  assert(back.has_value() && std::get<0>(back.value()) == N * (N + 1) / 2);
+  const auto [result] = *back;
 
-  return 0;
+  return result - N * (N + 1) / 2;
 }
