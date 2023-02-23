@@ -6,6 +6,24 @@
 #include <numeric>
 #include <vector>
 #include <iostream>
+#include <chrono>
+#include <string>
+
+class timer {
+  const std::string name;
+  const std::chrono::high_resolution_clock::time_point start;
+  std::ostream &os;
+public:
+  timer(std::string s, std::ostream &_os = std::cerr) : name(s), start(std::chrono::high_resolution_clock::now()), os(_os) {
+    os << name << " has started" << std::endl;
+  }
+  ~timer() {
+    os << name << " took " << time() << "s" << std::endl;
+  }
+  double time() const {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(std::chrono::high_resolution_clock::now() - start).count();
+  }
+};
 
 using namespace stdexec;
 using namespace exec;
@@ -58,24 +76,34 @@ sender auto async_inclusive_scan(sender auto init_sender__,
 }
 
 int main(int argc, char *argv[]) {
-  exec::static_thread_pool ctx{8};
+  const int num_threads = 4;
+
+  exec::static_thread_pool ctx{num_threads};
 
   scheduler auto sch = ctx.get_scheduler();
   
-  const std::size_t N = 100000;
+  const std::size_t N = 500000000;
   
   std::vector<std::size_t> a(N);
   std::iota(a.begin(), a.end(), 1);
 
   std::span a_span{a.begin(), a.end()};
 
-  sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 1000, 8);
+  int sum = 0;
+    
+  for (int i = 0; i < 100; i++) {
+    sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 10000, num_threads);
 
-  sender auto scan_back_on = on(sch, std::move(scan_back));
+    sender auto scan_back_on = on(sch, std::move(scan_back));
 
-  auto back = this_thread::sync_wait(std::move(scan_back_on));
+    timer t("scan");
 
-  const auto [result] = *back;
+    auto back = this_thread::sync_wait(std::move(scan_back_on));
 
-  return result - N * (N + 1) / 2;
+    const auto [result] = *back;
+
+    sum += result != N * (N + 1) / 2;
+  }
+  
+  return sum;
 }
