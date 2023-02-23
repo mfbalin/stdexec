@@ -20,7 +20,7 @@ sender auto async_inclusive_scan(sender auto init_sender__,
                                  std::span<T> output,
                                  const std::size_t block_size,
                                  const std::size_t tile_count) {
-  any_sender_of<set_value_t(T)> init_sender = std::move(init_sender__);
+  any_sender_of<set_value_t(T), set_stopped_t(), set_error_t(std::exception_ptr)> init_sender = std::move(init_sender__);
 
   while (!input.empty()) {
     std::size_t const N = std::min(input.size(), tile_count * block_size);
@@ -71,9 +71,9 @@ int main(int argc, char *argv[]) {
 
   sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 1000, 8);
 
-  sender auto scan_back_on = on(sch, scan_back);
+  sender auto scan_back_on = on(sch, std::move(scan_back));
 
-  auto back = this_thread::sync_wait(scan_back_on);
+  auto back = this_thread::sync_wait(std::move(scan_back_on));
 
   assert(back.has_value() && std::get<0>(back.value()) == N * (N + 1) / 2);
 
