@@ -1,6 +1,8 @@
 #include <stdexec/execution.hpp>
 #include <exec/any_sender_of.hpp>
+#include <exec/single_thread_context.hpp>
 #include <exec/static_thread_pool.hpp>
+#include <tbbexec/tbb_thread_pool.hpp>
 
 #include <span>
 #include <numeric>
@@ -76,22 +78,33 @@ sender auto async_inclusive_scan(sender auto init_sender__,
 }
 
 int main(int argc, char *argv[]) {
-  const int num_threads = 4;
+  const int num_threads = 8;
 
-  exec::static_thread_pool ctx{num_threads};
+  // exec::single_thread_context ctx;
+  // exec::static_thread_pool ctx{num_threads};
+  tbbexec::tbb_thread_pool ctx{num_threads};
 
   scheduler auto sch = ctx.get_scheduler();
   
   const std::size_t N = 500000000;
   
   std::vector<std::size_t> a(N);
-  std::iota(a.begin(), a.end(), 1);
 
   std::span a_span{a.begin(), a.end()};
 
   int sum = 0;
-    
-  for (int i = 0; i < 100; i++) {
+
+  for (int i = 0; i < 10; i++) {
+    sender auto iota = just() | bulk(num_threads, [a_span](std::size_t i) {
+      const auto start = i * a_span.size() / num_threads;
+      const auto end = (i + 1) * a_span.size() / num_threads;
+      std::iota(a_span.begin() + start, a_span.begin() + end, start);
+    });
+
+    sender auto iota_on = on(sch, std::move(iota));
+
+    this_thread::sync_wait(std::move(iota_on));
+
     sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 4096, num_threads);
 
     sender auto scan_back_on = on(sch, std::move(scan_back));
@@ -102,7 +115,7 @@ int main(int argc, char *argv[]) {
 
     const auto [result] = *back;
 
-    sum += result != N * (N + 1) / 2;
+    sum += result != N * (N - 1) / 2;
   }
   
   return sum;

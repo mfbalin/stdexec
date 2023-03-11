@@ -30,30 +30,14 @@ function(def_example example)
     add_executable(${target} ${source})
     target_link_libraries(${target}
         PRIVATE STDEXEC::stdexec
+                tbbexec
                 stdexec_executable_flags)
 endfunction()
 
-set(stdexec_examples
-               "example.clangd.helper : _clangd_helper_file.cpp"
-                 "example.hello_world : hello_world.cpp"
-                  "example.hello_coro : hello_coro.cpp"
-                       "example.scope : scope.cpp"
-                       "example.retry : retry.cpp"
-                        "example.then : then.cpp"
-      "example.server_theme.let_value : server_theme/let_value.cpp"
-    "example.server_theme.on_transfer : server_theme/on_transfer.cpp"
-      "example.server_theme.then_upon : server_theme/then_upon.cpp"
-     "example.server_theme.split_bulk : server_theme/split_bulk.cpp"
+set(tbbexec_examples
+                       "example.scan  : scan.cpp"
 )
 
-foreach(example ${stdexec_examples})
+foreach(example ${tbbexec_examples})
     def_example(${example})
 endforeach()
-
-if(STDEXEC_ENABLE_CUDA)
-    add_subdirectory(nvexec)
-endif()
-
-if(STDEXEC_ENABLE_TBB)
-    add_subdirectory(tbbexec)
-endif()
