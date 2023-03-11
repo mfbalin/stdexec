@@ -92,7 +92,7 @@ int main(int argc, char *argv[]) {
   int sum = 0;
     
   for (int i = 0; i < 100; i++) {
-    sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 10000, num_threads);
+    sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 4096, num_threads);
 
     sender auto scan_back_on = on(sch, std::move(scan_back));
 
