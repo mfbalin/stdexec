@@ -61,14 +61,14 @@ namespace tbbexec {
 
          private:
           template <typename Receiver>
-          operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>>
+          operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
             make_operation_(Receiver&& r) const {
-            return operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>>{
+            return operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>{
               this->pool_, (Receiver&&) r};
           }
 
           template <class Receiver>
-          friend operation<DerivedPoolType, stdexec::__x<std::decay_t<Receiver>>>
+          friend operation<DerivedPoolType, stdexec::__x<stdexec::__decay_t<Receiver>>>
             tag_invoke(stdexec::connect_t, sender s, Receiver&& r) {
             return s.make_operation_(std::forward<Receiver>(r));
           }
@@ -89,8 +89,7 @@ namespace tbbexec {
         };
 
         template <class Fun, class Shape, class... Args>
-          requires stdexec::__callable<Fun, Shape, Args...>
-        using bulk_non_throwing = stdexec::__bool<
+        using bulk_non_throwing = stdexec::__mbool<
           // If function invocation doesn't throw
           stdexec::__nothrow_callable<Fun, Shape, Args...> &&
           // and emplacing a tuple doesn't throw
@@ -298,6 +297,9 @@ namespace tbbexec {
           }
         };
 
+        template <class _Ty>
+        using __decay_ref = stdexec::__decay_t<_Ty>&;
+
         template <class SenderId, std::integral Shape, class FunId>
         struct bulk_sender {
           using Sender = stdexec::__t<SenderId>;
@@ -313,14 +315,16 @@ namespace tbbexec {
             stdexec::__v<stdexec::__value_types_of_t<
               Sender,
               Env,
-              stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>,
+              stdexec::__transform<
+                stdexec::__q<__decay_ref>,
+                stdexec::__mbind_front_q<bulk_non_throwing, Fun, Shape>>,
               stdexec::__q<stdexec::__mand>>>,
             stdexec::completion_signatures<>,
             stdexec::__with_exception_ptr>;
 
           template <class... Tys>
           using set_value_t =
-            stdexec::completion_signatures<stdexec::set_value_t(std::decay_t<Tys>...)>;
+            stdexec::completion_signatures<stdexec::set_value_t(stdexec::__decay_t<Tys>...)>;
 
           template <class Self, class Env>
           using completion_signatures = stdexec::__make_completion_signatures<
@@ -341,7 +345,7 @@ namespace tbbexec {
               receiver_of<Receiver, completion_signatures<Self, stdexec::env_of_t<Receiver>>>
             friend bulk_op_state_t<Self, Receiver>
             tag_invoke(stdexec::connect_t, Self&& self, Receiver&& rcvr) noexcept(
-              std::is_nothrow_constructible_v<
+              stdexec::__nothrow_constructible_from<
                 bulk_op_state_t<Self, Receiver>,
                 DerivedPoolType&,
                 Shape,

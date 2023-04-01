@@ -147,7 +147,7 @@ namespace nvexec {
     };
 
     template <class... Ts>
-    using decayed_tuple = ::cuda::std::tuple<std::decay_t<Ts>...>;
+    using decayed_tuple = ::cuda::std::tuple<stdexec::__decay_t<Ts>...>;
 
     namespace stream_storage_impl {
       template <class... _Ts>
@@ -155,8 +155,9 @@ namespace nvexec {
         stdexec::__minvoke<
           stdexec::__if_c<
             sizeof...(_Ts) != 0,
-            stdexec::
-              __transform<stdexec::__q<std::decay_t>, stdexec::__munique<stdexec::__q<variant_t>>>,
+            stdexec::__transform<
+              stdexec::__q<stdexec::__decay_t>,
+              stdexec::__munique<stdexec::__q<variant_t>>>,
             stdexec::__mconst<stdexec::__not_a_variant>>,
           _Ts...>;
 
@@ -246,12 +247,14 @@ namespace nvexec {
     }
 
     template <class S>
-    concept stream_sender = stdexec::sender<S>
-                         && std::is_base_of_v<stream_sender_base, std::decay_t<S>>;
+    concept stream_sender = //
+      stdexec::sender<S> && //
+      std::is_base_of_v<stream_sender_base, stdexec::__decay_t<S>>;
 
     template <class R>
-    concept stream_receiver =
-      stdexec::receiver<R> && std::is_base_of_v<stream_receiver_base, std::decay_t<R>>;
+    concept stream_receiver = //
+      stdexec::receiver<R> && //
+      std::is_base_of_v<stream_receiver_base, stdexec::__decay_t<R>>;
 
     struct stream_op_state_base { };
 
@@ -359,13 +362,13 @@ namespace nvexec {
     };
 
     template <class Env>
-      requires stdexec::tag_invocable<get_stream_t, const std::decay_t<Env>&>
+      requires stdexec::tag_invocable<get_stream_t, const stdexec::__decay_t<Env>&>
     constexpr bool borrows_stream_h() {
       return true;
     }
 
     template <class Env>
-      requires(!stdexec::tag_invocable<get_stream_t, const std::decay_t<Env>>)
+      requires(!stdexec::tag_invocable<get_stream_t, const stdexec::__decay_t<Env>>)
     constexpr bool borrows_stream_h() {
       return false;
     }
@@ -418,7 +421,7 @@ namespace nvexec {
           if constexpr (stream_receiver<outer_receiver_t>) {
             tag((outer_receiver_t&&) receiver_, (As&&) as...);
           } else {
-            continuation_kernel<std::decay_t<outer_receiver_t>, Tag, As...>
+            continuation_kernel<stdexec::__decay_t<outer_receiver_t>, Tag, As...>
               <<<1, 1, 0, get_stream()>>>(receiver_, tag, (As&&) as...);
           }
         }
@@ -577,7 +580,7 @@ namespace nvexec {
       requires stream_receiver<OuterReceiver>
     using exit_operation_state_t = //
       operation_state_t<
-        stdexec::__cvref_id<CvrefSender, std::remove_cvref_t<CvrefSender>>,
+        stdexec::__cvref_id<CvrefSender, stdexec::__decay_t<CvrefSender>>,
         stdexec::__id<stdexec::__t<propagate_receiver_t<stdexec::__id<OuterReceiver>>>>,
         stdexec::__id<OuterReceiver>>;
 
@@ -596,19 +599,23 @@ namespace nvexec {
     }
 
     template <class S>
-    concept stream_completing_sender = stdexec::sender<S> && requires(const S& sndr) {
-      {
-        stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr))
-          .context_state_
-      } -> stdexec::__decays_to<context_state_t>;
-    };
+    concept stream_completing_sender = //
+      stdexec::sender<S> &&            //
+      requires(const S& sndr) {
+        {
+          stdexec::get_completion_scheduler<stdexec::set_value_t>(stdexec::get_env(sndr))
+            .context_state_
+        } -> stdexec::__decays_to<context_state_t>;
+      };
 
     template <class R>
-    concept receiver_with_stream_env = stdexec::receiver<R> && requires(const R& rcvr) {
-      {
-        stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_
-      } -> stdexec::__decays_to<context_state_t>;
-    };
+    concept receiver_with_stream_env = //
+      stdexec::receiver<R> &&          //
+      requires(const R& rcvr) {
+        {
+          stdexec::get_scheduler(stdexec::get_env(rcvr)).context_state_
+        } -> stdexec::__decays_to<context_state_t>;
+      };
 
     template <class InnerReceiverProvider, class OuterReceiver>
     using inner_receiver_t = //
@@ -619,7 +626,7 @@ namespace nvexec {
     template <class CvrefSender, class InnerReceiver, class OuterReceiver>
     using stream_op_state_t = //
       operation_state_t<
-        stdexec::__cvref_id<CvrefSender, std::remove_cvref_t<CvrefSender>>,
+        stdexec::__cvref_id<CvrefSender, stdexec::__decay_t<CvrefSender>>,
         stdexec::__id<InnerReceiver>,
         stdexec::__id<OuterReceiver>>;
 

@@ -62,8 +62,8 @@ namespace exec {
           }
         };
       };
-      template <class _R>
-      using __receiver = __t<__receiver_id<_R>>;
+      template <class _Rec>
+      using __receiver = __t<__receiver_id<_Rec>>;
 
       template <class _Sender>
       struct __sender_id {
@@ -101,7 +101,7 @@ namespace exec {
         };
       };
       template <class _Sender>
-      using __sender = __t<__sender_id<std::remove_cvref_t<_Sender>>>;
+      using __sender = __t<__sender_id<__decay_t<_Sender>>>;
 
       template <sender _Sender>
       __sender<_Sender> operator()(_Sender&& __sndr) const
@@ -238,7 +238,7 @@ namespace exec {
 
      public:
       template <class _Action, class... _Ts>
-        requires __callable<std::decay_t<_Action>, std::decay_t<_Ts>...>
+        requires __callable<__decay_t<_Action>, __decay_t<_Ts>...>
       __task<_Ts...> operator()(_Action&& __action, _Ts&&... __ts) const {
         return __impl((_Action&&) __action, (_Ts&&) __ts...);
       }

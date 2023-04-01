@@ -36,8 +36,14 @@ namespace exec {
     __manual_lifetime& operator=(__manual_lifetime&&) = delete;
 
     template <class... _Args>
-    _Ty& __construct(_Args&&... __args) noexcept(std::is_nothrow_constructible_v<_Ty, _Args...>) {
+    _Ty& __construct(_Args&&... __args) noexcept(
+      stdexec::__nothrow_constructible_from<_Ty, _Args...>) {
       return *::new (static_cast<void*>(std::addressof(__value_))) _Ty((_Args&&) __args...);
+    }
+
+    template <class _Func>
+    _Ty& __construct_with(_Func&& func) {
+      return *::new (static_cast<void*>(std::addressof(__value_))) _Ty(((_Func&&) func)());
     }
 
     void __destruct() noexcept {

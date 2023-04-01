@@ -123,7 +123,7 @@ namespace exec {
     };
 
     template <class _Constrained>
-    using __when_empty_sender_t = __when_empty_sender<__x<remove_cvref_t<_Constrained>>>;
+    using __when_empty_sender_t = __when_empty_sender<__x<__decay_t<_Constrained>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::nest implementation
@@ -230,7 +230,7 @@ namespace exec {
     };
 
     template <class _Constrained>
-    using __nest_sender_t = __nest_sender<__x<remove_cvref_t<_Constrained>>>;
+    using __nest_sender_t = __nest_sender<__x<__decay_t<_Constrained>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn_future implementation
@@ -276,53 +276,56 @@ namespace exec {
         __self.__start_();
       }
 
-      void __complete_() noexcept try {
-        auto __state = std::move(__state_);
-        STDEXEC_ASSERT(__state != nullptr);
-        std::unique_lock __guard{__state->__mutex_};
-        // either the future is still in use or it has passed ownership to __state->__no_future_
-        if (__state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future) {
-          // invalid state - there is a code bug in the state machine
-          std::terminate();
-        } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
-          __guard.unlock();
-          set_stopped((_Receiver&&) __rcvr_);
-          __guard.lock();
-        } else {
-          std::visit(
-            [this, &__guard]<class _Tup>(_Tup& __tup) {
-              if constexpr (same_as<_Tup, std::monostate>) {
-                std::terminate();
-              } else {
-                std::apply(
-                  [this, &__guard]<class... _As>(auto tag, _As&... __as) {
-                    __guard.unlock();
-                    tag((_Receiver&&) __rcvr_, (_As&&) __as...);
-                    __guard.lock();
-                  },
-                  __tup);
-              }
-            },
-            __state->__data_);
+      void __complete_() noexcept {
+        try {
+          auto __state = std::move(__state_);
+          STDEXEC_ASSERT(__state != nullptr);
+          std::unique_lock __guard{__state->__mutex_};
+          // either the future is still in use or it has passed ownership to __state->__no_future_
+          if (
+            __state->__no_future_.get() != nullptr || __state->__step_ != __future_step::__future) {
+            // invalid state - there is a code bug in the state machine
+            std::terminate();
+          } else if (get_stop_token(get_env(__rcvr_)).stop_requested()) {
+            __guard.unlock();
+            set_stopped((_Receiver&&) __rcvr_);
+            __guard.lock();
+          } else {
+            std::visit(
+              [this, &__guard]<class _Tup>(_Tup& __tup) {
+                if constexpr (same_as<_Tup, std::monostate>) {
+                  std::terminate();
+                } else {
+                  std::apply(
+                    [this, &__guard]<class... _As>(auto tag, _As&... __as) {
+                      __guard.unlock();
+                      tag((_Receiver&&) __rcvr_, (_As&&) __as...);
+                      __guard.lock();
+                    },
+                    __tup);
+                }
+              },
+              __state->__data_);
+          }
+        } catch (...) {
+          set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
-      } catch (...) {
-
-        set_error((_Receiver&&) __rcvr_, std::current_exception());
       }
 
-      void __start_() noexcept try {
-        if (!!__state_) {
-          std::unique_lock __guard{__state_->__mutex_};
-          if (__state_->__data_.index() != 0) {
-            __guard.unlock();
-            __complete_();
-          } else {
-            __state_->__subscribers_.push_back(this);
+      void __start_() noexcept {
+        try {
+          if (!!__state_) {
+            std::unique_lock __guard{__state_->__mutex_};
+            if (__state_->__data_.index() != 0) {
+              __guard.unlock();
+              __complete_();
+            } else {
+              __state_->__subscribers_.push_back(this);
+            }
           }
+        } catch (...) {
+          set_error((_Receiver&&) __rcvr_, std::current_exception());
         }
-      } catch (...) {
-
-        set_error((_Receiver&&) __rcvr_, std::current_exception());
       }
 
       [[no_unique_address]] _Receiver __rcvr_;
@@ -379,10 +382,10 @@ namespace exec {
 #endif
 
     template <class... _Ts>
-    using __decay_values_t = completion_signatures<set_value_t(decay_t<_Ts>&&...)>;
+    using __decay_values_t = completion_signatures<set_value_t(__decay_t<_Ts>&&...)>;
 
     template <class _Ty>
-    using __decay_error_t = completion_signatures<set_error_t(decay_t<_Ty>&&)>;
+    using __decay_error_t = completion_signatures<set_error_t(__decay_t<_Ty>&&)>;
 
     template <class _Sender, class _Env>
     using __future_completions_t = //
@@ -581,7 +584,7 @@ namespace exec {
     };
 
     template <class _Sender, class _Env>
-    using __future_t = __future<__x<__nest_sender_t<_Sender>>, __x<remove_cvref_t<_Env>>>;
+    using __future_t = __future<__x<__nest_sender_t<_Sender>>, __x<__decay_t<_Env>>>;
 
     ////////////////////////////////////////////////////////////////////////////
     // async_scope::spawn implementation

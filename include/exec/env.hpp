@@ -60,16 +60,17 @@ namespace exec {
       [[no_unique_address]] _Default __default_;
       _Receiver __rcvr_;
 
-      friend void tag_invoke(start_t, __operation& __self) noexcept try {
-        if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
-          const auto& __env = get_env(__self.__rcvr_);
-          set_value(std::move(__self.__rcvr_), _Tag{}(__env));
-        } else {
-          set_value(std::move(__self.__rcvr_), std::move(__self.__default_));
+      friend void tag_invoke(start_t, __operation& __self) noexcept {
+        try {
+          if constexpr (__callable<_Tag, env_of_t<_Receiver>>) {
+            const auto& __env = get_env(__self.__rcvr_);
+            set_value(std::move(__self.__rcvr_), _Tag{}(__env));
+          } else {
+            set_value(std::move(__self.__rcvr_), std::move(__self.__default_));
+          }
+        } catch (...) {
+          set_error(std::move(__self.__rcvr_), std::current_exception());
         }
-      } catch (...) {
-
-        set_error(std::move(__self.__rcvr_), std::current_exception());
       }
     };
 
@@ -105,7 +106,7 @@ namespace exec {
     struct __read_with_default_t {
       template <class _Tag, class _Default>
       constexpr auto operator()(_Tag, _Default&& __default) const
-        -> __sender<_Tag, __x<decay_t<_Default>>> {
+        -> __sender<_Tag, __x<__decay_t<_Default>>> {
         return {(_Default&&) __default};
       }
     };
@@ -199,7 +200,7 @@ namespace exec {
       template <__is_not_instance_of<__env::__with> _Sender, class... _Tags, class... _Values>
         requires sender<_Sender>
       auto operator()(_Sender&& __sndr, __env::__with<_Tags, _Values>... __withs) const
-        -> __sender<__x<decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
+        -> __sender<__x<__decay_t<_Sender>>, __env::__with<_Tags, _Values>...> {
         return {(_Sender&&) __sndr, {std::move(__withs)...}};
       }
 
