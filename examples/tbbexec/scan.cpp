@@ -95,15 +95,19 @@ int main(int argc, char *argv[]) {
   int sum = 0;
 
   for (int i = 0; i < 10; i++) {
-    sender auto iota = just() | bulk(num_threads, [a_span](std::size_t i) {
-      const auto start = i * a_span.size() / num_threads;
-      const auto end = (i + 1) * a_span.size() / num_threads;
-      std::iota(a_span.begin() + start, a_span.begin() + end, start);
-    });
+    {
+      sender auto iota = just() | bulk(num_threads, [a_span](std::size_t i) {
+        const auto start = i * a_span.size() / num_threads;
+        const auto end = (i + 1) * a_span.size() / num_threads;
+        std::iota(a_span.begin() + start, a_span.begin() + end, start);
+      });
 
-    sender auto iota_on = on(sch, std::move(iota));
+      sender auto iota_on = on(sch, std::move(iota));
 
-    sync_wait(std::move(iota_on));
+      timer t("iota");
+
+      sync_wait(std::move(iota_on));
+    }
 
     sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 4096, num_threads);
 
