@@ -103,7 +103,7 @@ int main(int argc, char *argv[]) {
 
     sender auto iota_on = on(sch, std::move(iota));
 
-    this_thread::sync_wait(std::move(iota_on));
+    sync_wait(std::move(iota_on));
 
     sender auto scan_back = async_inclusive_scan(just((std::size_t)0), a_span, a_span, 4096, num_threads);
 
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
 
     timer t("scan");
 
-    auto back = this_thread::sync_wait(std::move(scan_back_on));
+    auto back = sync_wait(std::move(scan_back_on));
 
     const auto [result] = *back;
 
