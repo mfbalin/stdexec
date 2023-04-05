@@ -85,9 +85,9 @@ int main(int argc, char *argv[]) {
   tbbexec::tbb_thread_pool ctx{num_threads};
 
   scheduler auto sch = ctx.get_scheduler();
-  
+
   const std::size_t N = 500000000;
-  
+
   std::vector<std::size_t> a(N);
 
   std::span a_span{a.begin(), a.end()};
@@ -117,6 +117,6 @@ int main(int argc, char *argv[]) {
 
     sum += result != N * (N - 1) / 2;
   }
-  
+
   return sum;
 }
